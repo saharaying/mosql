@@ -81,6 +81,7 @@ module MoSQL
           next unless n.is_a?(String)
           meta = collection[:meta]
           composite_key = meta[:composite_key]
+          id_specified = meta[:id].nil? ? true : meta[:id]
           keys = []
           log.info("Creating table '#{meta[:table]}'...")
           db.send(clobber ? :create_table! : :create_table?, meta[:table]) do
@@ -91,14 +92,20 @@ module MoSQL
               end
               column col[:name], col[:type], opts
 
-              if composite_key and composite_key.include?(col[:name])
-                keys << col[:name].to_sym
-              elsif not composite_key and col[:source].to_sym == :_id
-                keys << col[:name].to_sym
+              if id_specified
+                if composite_key and composite_key.include?(col[:name])
+                  keys << col[:name].to_sym
+                elsif not composite_key and col[:source].to_sym == :_id
+                  keys << col[:name].to_sym
+                end
               end
             end
+            if id_specified
+              primary_key keys
+            else
+              primary_key :id
+            end
 
-            primary_key keys
             if meta[:extra_props]
               type =
                 case meta[:extra_props]
